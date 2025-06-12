@@ -33,10 +33,10 @@ class Level:
         self.fondo_actual = self.fondo_gris.copy()
         self.player = Player((100, 100))
 
-        # 3. Ahora sí puedes crear su grupo
+        
         self.player_group = pygame.sprite.GroupSingle(self.player)
 
-        
+        self.boton_reinicio = pygame.Rect(300, 500, 200, 50)
 
         
         
@@ -44,7 +44,14 @@ class Level:
        
         
         # Crear fragmentos de voz
-        
+        try:
+            with open("progreso.txt", "r") as archivo:
+                datos = archivo.readline()
+                fragmentos_guardados = int(datos.split(": ")[1])
+                self.fragmentos_recogidos = min(fragmentos_guardados, NUM_FRAGMENTOS_NECESARIOS - 1)  # No permitir que inicie en estado final
+        except FileNotFoundError:
+                self.fragmentos_recogidos = 0  # Iniciar en cero si no hay datos guardados
+
         
         self.fragmentos_recogidos = 0
         self.juego_terminado = False
@@ -79,7 +86,7 @@ class Level:
         for pos, size, speed in obstaculo_data:
             self.obstaculos.add(Obstaculo(pos, size, speed))
 
-
+        
 
     def update(self):
         keys = pygame.key.get_pressed()
@@ -103,6 +110,8 @@ class Level:
         self.fragmentos.update()
         self.fragmentos_recogidos += len(recogidos)
          # Actualiza fondo con cada fragmento recogido
+        self.guardar_progreso()  # Guarda el progreso en un archivo
+
         self.actualizar_fondo_transicion()
 
         # Cambiar a fondo brillante si se recolectaron suficientes fragmentos
@@ -150,6 +159,12 @@ class Level:
 
     
         print(f"Fragmentos en pantalla: {len(self.fragmentos.sprites())}")
+        if self.juego_terminado:
+            pygame.draw.rect(screen, (50, 150, 255), self.boton_reinicio)  # Dibujar botón azul
+            font = pygame.font.SysFont(None, 36)
+            texto = font.render("Reiniciar", True, (255, 255, 255))
+            screen.blit(texto, (self.boton_reinicio.x + 60, self.boton_reinicio.y + 15))
+
 
     def dibujar_barra_progreso(self, screen):
     # Tamaño y posición de la barra
@@ -180,3 +195,32 @@ class Level:
     
         # Superpone el brillante sobre el gris
         self.fondo_actual.blit(brillante, (0, 0))
+
+    def guardar_progreso(self):
+        """Guarda el número de fragmentos recolectados en un archivo plano"""
+        with open("progreso.txt", "w") as archivo:
+            archivo.write(f"Fragmentos recolectados: {self.fragmentos_recogidos}\n")
+
+    def reiniciar_juego(self):
+        """Reinicia todos los valores del juego para volver a jugar desde cero"""
+        self.fragmentos_recogidos = 0
+        self.juego_terminado = False
+        self.mostrar_mensaje_final = False
+        self.fondo_actual = self.fondo_gris.copy()
+
+        # Restaurar fragmentos y obstáculos
+        self.fragmentos.empty()
+        for pos in self.fragmento_posiciones:
+            self.fragmentos.add(FragmentoVoz(pos))
+
+        self.obstaculos.empty()
+        obstaculo_data = [
+            ((200, 150), (80, 80), (2, 0)),
+            ((400, 300), (50, 150), (0, 2)),
+            ((600, 100), (80, 80), (1, 1))
+        ]
+        for pos, size, speed in obstaculo_data:
+            self.obstaculos.add(Obstaculo(pos, size, speed))
+
+    # Reiniciar posición del jugador
+        self.player.rect.topleft = (100, 100)
